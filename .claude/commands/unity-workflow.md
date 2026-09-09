@@ -1,19 +1,28 @@
 ---
 name: unity-workflow
-description: "Full development pipeline — clarify requirements, plan implementation, execute with agents, verify with review + tests."
+description: "Full development pipeline from a GitHub issue — clarify requirements, plan implementation, execute with agents, verify with review + tests."
 user-invocable: true
-args: feature_description
+args: issue_number
 ---
 
 # /unity-workflow — Full Development Pipeline
 
-Orchestrate a complete development workflow for: **$ARGUMENTS**
+Argument: **$ARGUMENTS** — a GitHub issue number or URL, e.g. `12`.
 
-This command runs a 4-phase pipeline: **Clarify → Plan → Execute → Verify**. Each phase requires explicit user confirmation before proceeding to the next.
+This command runs a 5-phase pipeline: **Fetch → Clarify → Plan → Execute → Verify**. Each phase requires explicit user confirmation before proceeding to the next.
+
+## Phase 0: Fetch the Issue
+
+1. `gh issue view $ARGUMENTS --json number,title,body,labels,url,comments,state`
+   - If `gh` isn't authenticated or the issue can't be found, stop and show the error.
+   - If the issue is already closed, tell the user and ask whether to proceed anyway.
+2. Read the title, body, labels, and comments fully — this is the feature/bug description the rest of the pipeline works from.
+3. Keep the issue number and URL on hand for Phase 5's summary and any commit message (`Refs #<issue_number>` / `Closes #<issue_number>`).
+4. If the issue already reads like a refined spec (problem, acceptance criteria, scope already filled in — e.g. it went through `/unity-refine` or `/unity-groom`), Phase 1 can be brief. If it's raw, run the full clarify pass below. Consider suggesting `/unity-refine <issue_number>` first when the issue is large or clearly needs product-level triage before code — but proceed here if the user wants to go straight to implementation.
 
 ## Phase 1: Clarify
 
-Interview the user to build a complete requirements picture. Ask about:
+Interview the user to fill any gaps the issue doesn't already answer:
 
 1. **Core mechanic / feature purpose** — what does it do? What problem does it solve?
 2. **Target platform** — mobile (iOS/Android), desktop, WebGL, VR?
@@ -24,7 +33,7 @@ Interview the user to build a complete requirements picture. Ask about:
 
 Produce a **Requirements Summary** with all answers consolidated. Ask the user to confirm before proceeding.
 
-If the user provided a detailed description in `$ARGUMENTS` and the requirements are clear, you may present the summary directly for confirmation rather than asking each question individually.
+If the issue body already answers these clearly, present the summary directly for confirmation rather than asking each question individually — only ask about what's genuinely missing or ambiguous.
 
 ## Phase 2: Plan
 
@@ -62,6 +71,19 @@ Unless `--no-critic` is specified in the original arguments:
 5. If no critical challenges are raised, proceed directly to Phase 3
 
 ## Phase 3: Execute
+
+### Branch first
+
+Before any file is created or edited, create and check out a dedicated branch — never implement directly on `main`:
+
+1. `git status` — if there are uncommitted changes unrelated to this issue, stop and ask the user how to handle them (stash, commit, or abort) rather than branching over dirty state.
+2. Build the branch name from the issue: `issue-<issue_number>-<kebab-case-slug-of-the-title>`, e.g. issue #1 titled "satır yok olma effekti olsun..." → `issue-1-line-clear-effect` (slug from the *gist* of the title, not a literal transliteration — short, meaningful, a handful of words).
+3. `git checkout -b issue-<issue_number>-<slug>` off the current `main` (fast-forward/pull first if `main` is behind `origin/main`).
+4. If a branch with that name already exists (e.g. a resumed workflow), check it out instead of creating a new one — don't error out.
+
+Do this once per `/unity-workflow` run, before Phase 3 step 1 below. Do not push the branch or open a PR automatically — that stays a separate, explicitly-requested action per this project's push/PR safety rules.
+
+### Implement
 
 Follow the approved plan:
 
@@ -124,6 +146,12 @@ Present a complete summary to the user:
 
 ### How to test
 - [step-by-step testing instructions]
+
+### Source issue
+- #<issue_number> — <url>
+
+### Branch
+- `issue-<issue_number>-<slug>` — not pushed; push and open a PR when the user asks
 ```
 
 ## Design Principles
