@@ -183,7 +183,7 @@ SUGGESTED_SKILLS=$(suggest_skills)
 # ---------------------------------------------------------------------------
 # 7. Generate CLAUDE.md
 # ---------------------------------------------------------------------------
-OUTPUT="$PROJECT_DIR/CLAUDE.md"
+OUTPUT="${2:-$PROJECT_DIR/CLAUDE.md}"
 
 cat > "$OUTPUT" <<MDEOF
 # CLAUDE.md - Project Context for AI Assistants
@@ -241,7 +241,7 @@ if (( ${#SCENE_LIST[@]} > 0 )); then
     idx=0
     for scene in "${SCENE_LIST[@]}"; do
         echo "$idx. \`$scene\`" >> "$OUTPUT"
-        ((idx++))
+        idx=$((idx + 1))
     done
 else
     echo "_No scenes found in EditorBuildSettings._" >> "$OUTPUT"

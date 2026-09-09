@@ -9,7 +9,7 @@
 #   ./install.sh [--project-dir <path>]
 # ============================================================================
 
-set -euo pipefail
+set -eo pipefail
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 if [ -t 1 ] && command -v tput &>/dev/null; then
@@ -240,7 +240,7 @@ fi
 
 # Generate CLAUDE.md
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/scripts/generate-claude-md.sh" ]; then
-    bash "$SCRIPT_DIR/scripts/generate-claude-md.sh" "$PROJECT_DIR" > "$CLAUDE_MD"
+    bash "$SCRIPT_DIR/scripts/generate-claude-md.sh" "$PROJECT_DIR" "$CLAUDE_MD"
 else
     # Inline generation if script not available
     cat > "$CLAUDE_MD" << HEREDOC
