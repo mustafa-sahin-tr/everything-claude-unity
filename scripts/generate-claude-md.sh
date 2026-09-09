@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 # =============================================================================
 # generate-claude-md.sh
@@ -47,9 +47,9 @@ fi
 PROJECT_DIR="${1:-.}"
 PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
 
-info()  { echo "${CYAN}[INFO]${RESET}  $*"; }
-warn()  { echo "${YELLOW}[WARN]${RESET}  $*"; }
-error() { echo "${RED}[ERROR]${RESET} $*"; }
+info()  { echo "${CYAN}[INFO]${RESET}  $*" >&2; }
+warn()  { echo "${YELLOW}[WARN]${RESET}  $*" >&2; }
+error() { echo "${RED}[ERROR]${RESET} $*" >&2; }
 
 # Basic sanity check
 if [[ ! -d "$PROJECT_DIR/Assets" ]]; then
@@ -88,37 +88,40 @@ fi
 # ---------------------------------------------------------------------------
 # 3. Detect installed packages
 # ---------------------------------------------------------------------------
-declare -A KNOWN_PACKAGES=(
-    ["com.demigiant.dotween"]="DOTween"
-    ["com.cysharp.unitask"]="UniTask"
-    ["jp.hadashikick.vcontainer"]="VContainer"
-    ["com.svermeulen.extenject"]="Zenject / Extenject"
-    ["com.unity.inputsystem"]="Input System"
-    ["com.unity.addressables"]="Addressables"
-    ["com.unity.cinemachine"]="Cinemachine"
-    ["com.unity.textmeshpro"]="TextMeshPro"
-    ["com.unity.netcode.gameobjects"]="Netcode for GameObjects"
-    ["com.unity.multiplayer.tools"]="Multiplayer Tools"
-    ["com.unity.2d.animation"]="2D Animation"
-    ["com.unity.2d.sprite"]="2D Sprite"
-    ["com.unity.probuilder"]="ProBuilder"
-    ["com.unity.recorder"]="Recorder"
-    ["com.unity.ai.navigation"]="AI Navigation"
-    ["com.unity.entities"]="Entities (DOTS)"
-    ["com.unity.burst"]="Burst Compiler"
-    ["com.unity.collections"]="Collections"
-    ["com.unity.mathematics"]="Mathematics"
-    ["com.unity.rendering.hybrid"]="Hybrid Renderer"
-    ["com.unity.visualscripting"]="Visual Scripting"
-    ["com.unity.localization"]="Localization"
+KNOWN_PACKAGES=(
+    "com.demigiant.dotween|DOTween"
+    "com.cysharp.unitask|UniTask"
+    "jp.hadashikick.vcontainer|VContainer"
+    "com.svermeulen.extenject|Zenject / Extenject"
+    "com.unity.inputsystem|Input System"
+    "com.unity.addressables|Addressables"
+    "com.unity.cinemachine|Cinemachine"
+    "com.unity.textmeshpro|TextMeshPro"
+    "com.unity.netcode.gameobjects|Netcode for GameObjects"
+    "com.unity.multiplayer.tools|Multiplayer Tools"
+    "com.unity.2d.animation|2D Animation"
+    "com.unity.2d.sprite|2D Sprite"
+    "com.unity.probuilder|ProBuilder"
+    "com.unity.recorder|Recorder"
+    "com.unity.ai.navigation|AI Navigation"
+    "com.unity.entities|Entities (DOTS)"
+    "com.unity.burst|Burst Compiler"
+    "com.unity.collections|Collections"
+    "com.unity.mathematics|Mathematics"
+    "com.unity.rendering.hybrid|Hybrid Renderer"
+    "com.unity.visualscripting|Visual Scripting"
+    "com.unity.localization|Localization"
+    "com.cysharp.messagepipe|MessagePipe"
 )
 
 DETECTED_PACKAGES=()
 SKILLS_HINTS=()
 if [[ -f "$MANIFEST" ]]; then
-    for pkg_id in "${!KNOWN_PACKAGES[@]}"; do
+    for entry in "${KNOWN_PACKAGES[@]}"; do
+        pkg_id="${entry%%|*}"
+        pkg_label="${entry#*|}"
         if grep -q "\"$pkg_id\"" "$MANIFEST"; then
-            DETECTED_PACKAGES+=("${KNOWN_PACKAGES[$pkg_id]}")
+            DETECTED_PACKAGES+=("$pkg_label")
         fi
     done
 fi
@@ -134,7 +137,8 @@ fi
 # ---------------------------------------------------------------------------
 ASMDEF_LIST=()
 while IFS= read -r -d '' asmdef; do
-    name=$(grep -oP '"name"\s*:\s*"\K[^"]+' "$asmdef" 2>/dev/null || basename "$asmdef" .asmdef)
+    name=$(sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$asmdef" 2>/dev/null | head -1)
+    [ -n "$name" ] || name=$(basename "$asmdef" .asmdef)
     rel_path="${asmdef#"$PROJECT_DIR/"}"
     ASMDEF_LIST+=("$name ($rel_path)")
 done < <(find "$PROJECT_DIR/Assets" -name '*.asmdef' -print0 2>/dev/null || true)
